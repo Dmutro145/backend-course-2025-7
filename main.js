@@ -7,49 +7,39 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Додаємо параметри для повторних спроб
+// Підключення до PostgreSQL
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-  connectionTimeoutMillis: 5000,
-  max: 10,
 });
 
-// Функція для тесту підключення з повторними спробами
-async function testConnection(retries = 5, delay = 1000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const client = await pool.connect();
-      console.log('Успішно підключено до PostgreSQL');
-      client.release();
-      return;
-    } catch (err) {
-      console.log(`Спроба ${i + 1}/${retries}: Не вдалося підключитися до БД. Чекаємо ${delay}ms...`);
-      if (i === retries - 1) {
-        console.error('Помилка підключення до БД:', err.message);
-      }
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
+// Тест підключення
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('Помилка підключення до БД:', err);
+  } else {
+    console.log('Успішно підключено до PostgreSQL');
+    release();
   }
-}
-
-// Викликаємо тест підключення
-testConnection();
+});
 
 app.use(express.json());
 
+// Створюємо папку для кешу
 const cacheDir = path.join(__dirname, 'cache');
 if (!fs.existsSync(cacheDir)) {
   fs.mkdirSync(cacheDir, { recursive: true });
 }
 
+// Базовий маршрут
 app.get('/', (req, res) => {
   res.send('Сервер працює!');
 });
 
+// Отримати всіх користувачів з БД
 app.get('/users', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM users');
@@ -60,6 +50,7 @@ app.get('/users', async (req, res) => {
   }
 });
 
+// Додати нового користувача
 app.post('/users', async (req, res) => {
   const { name, email } = req.body;
   try {
