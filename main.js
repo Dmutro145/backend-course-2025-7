@@ -8,8 +8,9 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Додаємо параметри для повторних спроб
+// Додаємо параметри для повторних спроб
 const pool = new Pool({
-  host: process.env.DB_HOST,
+  host: 'db',  // ← зміни тут
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -36,44 +37,7 @@ async function testConnection(retries = 5, delay = 1000) {
   }
 }
 
-// Викликаємо тест підключення
-testConnection();
-
-app.use(express.json());
-
-const cacheDir = path.join(__dirname, 'cache');
-if (!fs.existsSync(cacheDir)) {
-  fs.mkdirSync(cacheDir, { recursive: true });
-}
-
-app.get('/', (req, res) => {
-  res.send('Сервер працює!');
-});
-
-app.get('/users', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM users');
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Помилка сервера');
-  }
-});
-
-app.post('/users', async (req, res) => {
-  const { name, email } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
-      [name, email]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Помилка сервера');
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Сервер запущено на порті ${port}`);
-});
+// Затримка перед підключенням, щоб БД точно запустилась
+setTimeout(() => {
+  testConnection();
+}, 3000);
