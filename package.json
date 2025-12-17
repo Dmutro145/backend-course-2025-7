@@ -30,7 +30,9 @@
     "nodemon": "^3.1.11"
   }
 }
-"scripts": {
-  "start": "node main.js",
-  "dev": "nodemon main.js"
+{
+  "scripts": {
+    "start": "node main.js",
+    "dev": "nodemon --inspect=0.0.0.0:9229 main.js"
+  }
 }
