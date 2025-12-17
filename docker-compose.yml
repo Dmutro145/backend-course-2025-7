@@ -4,24 +4,16 @@ services:
   app:
     build: .
     ports:
-      - "${PORT}:${PORT}"
+      - "3000:3000"
+      - "9229:9229"  # порт для дебагера
     depends_on:
       - db
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=mydb
-      - DB_USER=user
-      - DB_PASSWORD=password
-      - DB_URL=postgresql://user:password@db:5432/mydb
-      - PORT=3000
       - NODE_ENV=development
-    env_file:
-      - .env  # Завантажує змінні з .env файлу
     volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run dev
+      - .:/app  # ЦЕ ГАРЯЧЕ МОНТУВАННЯ ФАЙЛІВ
+      - /app/node_modules  # виключаємо node_modules
+    command: npm run dev  # використовуємо nodemon
 
   db:
     image: postgres:15
@@ -31,7 +23,6 @@ services:
       POSTGRES_DB: mydb
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5432:5432"
 
