@@ -7,14 +7,16 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Додаємо параметри для повторних спроб
-// Додаємо параметри для повторних спроб
+// Middleware для парсингу JSON
+app.use(express.json());
+
+// Підключення до PostgreSQL
 const pool = new Pool({
-  host: 'db',  // ← зміни тут
+  host: 'db',  // ← ім'я сервісу з docker-compose.yml
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT || 5432,
   connectionTimeoutMillis: 5000,
   max: 10,
 });
@@ -24,17 +26,51 @@ async function testConnection(retries = 5, delay = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
       const client = await pool.connect();
-      console.log('Успішно підключено до PostgreSQL');
+      console.log(' Успішно підключено до PostgreSQL');
       client.release();
       return;
     } catch (err) {
-      console.log(`Спроба ${i + 1}/${retries}: Не вдалося підключитися до БД. Чекаємо ${delay}ms...`);
+      console.log(` Спроба ${i + 1}/${retries}: Не вдалося підключитися до БД. Чекаємо ${delay}ms...`);
       if (i === retries - 1) {
-        console.error('Помилка підключення до БД:', err.message);
+        console.error(' Помилка підключення до БД:', err.message);
       }
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
+}
+
+// Простий маршрут для перевірки сервера
+app.get('/', (req, res) => {
+  res.json({ message: 'Сервер працює!', timestamp: new Date().toISOString() });
+});
+
+// Додатковий маршрут для перевірки БД
+app.get('/health', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'OK', 
+      database: 'connected',
+      time: result.rows[0].now 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'ERROR', 
+      database: 'disconnected',
+      error: err.message 
+    });
+  }
+});
+
+// Затримка перед підключенням, щоб БД точно запустилась
+setTimeout(() => {
+  testConnection();
+}, 3000);
+
+// Запуск сервера
+app.listen(port, () => {
+  console.log(` Сервер запущено на порті ${port}`);
+});
 }
 
 // Затримка перед підключенням, щоб БД точно запустилась
