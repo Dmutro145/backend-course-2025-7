@@ -24,3 +24,15 @@ node_modules/
 test-route.js
 swagger.js
 hot-reload-demo.js
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Test files
+swagger.js
+test-route.js
+
+# Unused folders
+db/
