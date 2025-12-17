@@ -28,11 +28,12 @@ async function testConnection(retries = 5, delay = 1000) {
       const client = await pool.connect();
       console.log(' Успішно підключено до PostgreSQL');
       client.release();
-      return;
+      return true;
     } catch (err) {
       console.log(` Спроба ${i + 1}/${retries}: Не вдалося підключитися до БД. Чекаємо ${delay}ms...`);
       if (i === retries - 1) {
         console.error(' Помилка підключення до БД:', err.message);
+        return false;
       }
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -63,17 +64,11 @@ app.get('/health', async (req, res) => {
 });
 
 // Затримка перед підключенням, щоб БД точно запустилась
-setTimeout(() => {
-  testConnection();
+setTimeout(async () => {
+  await testConnection();
 }, 3000);
 
 // Запуск сервера
 app.listen(port, () => {
   console.log(` Сервер запущено на порті ${port}`);
 });
-}
-
-// Затримка перед підключенням, щоб БД точно запустилась
-setTimeout(() => {
-  testConnection();
-}, 3000);
