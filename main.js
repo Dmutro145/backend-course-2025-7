@@ -1,70 +1,90 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
-const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Підключення до PostgreSQL
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-});
-
-// Тест підключення
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Помилка підключення до БД:', err);
-  } else {
-    console.log('Успішно підключено до PostgreSQL');
-    release();
-  }
-});
-
 app.use(express.json());
 
-// Створюємо папку для кешу
-const cacheDir = path.join(__dirname, 'cache');
-if (!fs.existsSync(cacheDir)) {
-  fs.mkdirSync(cacheDir, { recursive: true });
-}
+const pool = new Pool({
+  host: 'db',
+  user: process.env.DB_USER || 'user',
+  password: process.env.DB_PASSWORD || 'password',
+  database: process.env.DB_NAME || 'mydb',
+  port: process.env.DB_PORT || 5432,
+});
 
-// Базовий маршрут
 app.get('/', (req, res) => {
-  res.send('Сервер працює!');
+  res.json({ message: 'Сервер працює!', timestamp: new Date().toISOString() });
 });
 
-// Отримати всіх користувачів з БД
-app.get('/users', async (req, res) => {
+app.get('/health', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users');
-    res.json(result.rows);
+    const result = await pool.query('SELECT NOW()');
+    res.json({ status: 'OK', time: result.rows[0].now });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Помилка сервера');
-  }
-});
-
-// Додати нового користувача
-app.post('/users', async (req, res) => {
-  const { name, email } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
-      [name, email]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Помилка сервера');
+    res.status(500).json({ status: 'ERROR', error: err.message });
   }
 });
 
 app.listen(port, () => {
   console.log(`Сервер запущено на порті ${port}`);
 });
+
+// Маршрут для перевірки змінних оточення
+app.get('/env', (req, res) => {
+  res.json({
+    PORT: process.env.PORT,
+    NODE_ENV: process.env.NODE_ENV,
+    DB_USER: process.env.DB_USER,
+    DB_NAME: process.env.DB_NAME,
+    DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
+    DB_PASSWORD: process.env.DB_PASSWORD ? '***' : 'не вказано'
+  });
+});
+
+app.get('/nodemon-test', (req, res) => {
+  res.json({
+    message: 'Nodemon hot reload працює!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Hot reload тест
+app.get('/hot-reload-test', (req, res) => {
+  res.json({
+    message: 'Hot reload працює!',
+    timestamp: new Date().toISOString(),
+    test: 'Оновлення без перезапуску контейнера'
+  });
+});
+
+// Дебаг тест
+app.get('/debug-test', (req, res) => {
+  console.log('🔴 Брейкпоінт тут!');
+  debugger;
+  res.json({
+    debug: true,
+    message: 'Використовуйте Chrome DevTools',
+    chrome_url: 'chrome://inspect',
+    timestamp: new Date().toISOString()
+  });
+});
+// Тестовий маршрут
+app.get('/test-hot-reload', (req, res) => {
+  res.json({
+    message: 'HOT RELOAD WORKS!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Simple test route
+app.get('/simple-test', (req, res) => res.json({test: 'hot reload test', time: new Date().toISOString()}));
+
+// Windows hot reload test
+app.get('/windows-test', (req, res) => res.json({success: true, os: 'windows', time: new Date().toISOString()}));
+
+// Final hot reload test
+app.get('/final-test', (req, res) => res.json({status: 'hot reload working', time: new Date().toISOString()}));

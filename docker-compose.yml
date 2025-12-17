@@ -1,28 +1,32 @@
+version: '3.8'
+
 services:
   app:
     build: .
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=development
-    volumes:
-      - .:/app
-      - /app/node_modules
+      - "9229:9229"
     depends_on:
       - db
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true  # Додаємо для кращого монтування на Windows
+    volumes:
+      - .:/usr/src/app  # Змінюємо шлях на стандартний
+      - /usr/src/app/node_modules
+    working_dir: /usr/src/app  # Додаємо working_dir
     command: npm run dev
 
   db:
-    image: postgres:15-alpine
+    image: postgres:15
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydb
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
 
 volumes:
   postgres_data:
